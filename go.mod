@@ -1,4 +1,4 @@
-module pic
+module github.com/kidandcat/pic
 
 go 1.24.1
 

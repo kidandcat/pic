@@ -235,6 +235,57 @@
             text-align: center;
         }
         
+        .getting-started {
+            padding: 4rem 0;
+            background-color: #fff;
+        }
+        
+        .getting-started h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+        
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .step-card {
+            padding: 2rem;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background-color: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .step-card h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .step-card code {
+            background-color: #e9ecef;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2rem;
@@ -255,6 +306,7 @@
         <nav class="container">
             <div class="logo">📸 pic</div>
             <ul class="nav-links">
+                <li><a href="#getting-started">Getting Started</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#usage">Usage</a></li>
                 <li><a href="#download">Download</a></li>
@@ -270,6 +322,38 @@
             <div class="cta-buttons">
                 <a href="#download" class="btn btn-primary">Download Now</a>
                 <a href="https://github.com/yourusername/pic" class="btn btn-secondary">View on GitHub</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="getting-started" class="getting-started">
+        <div class="container">
+            <h2>Getting Started</h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>Install pic</h3>
+                    <p>Download the binary for your OS or install via Go:</p>
+                    <div class="code-example">go install github.com/yourusername/pic@latest</div>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>Take Your First Screenshot</h3>
+                    <p>Simply run pic with any URL:</p>
+                    <div class="code-example">pic example.com</div>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>Find Your Image</h3>
+                    <p>The screenshot will be saved as <code>example.com.png</code> in your current directory</p>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">That's it! You're ready to capture any website.</p>
+                <div class="cta-buttons">
+                    <a href="#usage" class="btn btn-primary">See More Examples</a>
+                    <a href="#download" class="btn btn-secondary">Download Now</a>
+                </div>
             </div>
         </div>
     </section>

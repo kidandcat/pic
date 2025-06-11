@@ -320,8 +320,14 @@
             <h1>Capture Any Website</h1>
             <p>Simple, fast, and powerful website screenshot tool for your command line</p>
             <div class="cta-buttons">
-                <a href="#download" class="btn btn-primary">Download Now</a>
+                <a href="#getting-started" class="btn btn-primary">Get Started</a>
                 <a href="https://github.com/yourusername/pic" class="btn btn-secondary">View on GitHub</a>
+            </div>
+            <div style="margin-top: 2rem;">
+                <p style="opacity: 0.8; margin-bottom: 0.5rem;">Quick install:</p>
+                <div class="code-example" style="display: inline-block; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); margin: 0;">
+                    <code style="color: white;">curl -sSfL https://yourusername.github.io/pic/install.sh | bash</code>
+                </div>
             </div>
         </div>
     </section>
@@ -329,12 +335,40 @@
     <section id="getting-started" class="getting-started">
         <div class="container">
             <h2>Getting Started</h2>
+            
+            <!-- Quick Install Section -->
+            <div style="background-color: #2d2d2d; border-radius: 10px; padding: 2rem; margin-bottom: 3rem;">
+                <h3 style="color: white; margin-bottom: 1.5rem; text-align: center;">Quick Install</h3>
+                
+                <!-- Platform Tabs -->
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button class="install-tab active" data-platform="unix" style="background: #667eea; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 5px; cursor: pointer;">macOS / Linux</button>
+                    <button class="install-tab" data-platform="windows" style="background: #444; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 5px; cursor: pointer;">Windows</button>
+                </div>
+                
+                <!-- Install Commands -->
+                <div id="unix-install" class="install-content" style="display: block;">
+                    <div class="code-example" style="position: relative; margin: 0;">
+                        <code id="unix-command">curl -sSfL https://yourusername.github.io/pic/install.sh | bash</code>
+                        <button class="copy-btn" data-target="unix-command" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #667eea; color: white; border: none; padding: 0.3rem 0.8rem; border-radius: 3px; cursor: pointer;">Copy</button>
+                    </div>
+                </div>
+                
+                <div id="windows-install" class="install-content" style="display: none;">
+                    <div class="code-example" style="position: relative; margin: 0;">
+                        <code id="windows-command">iwr -useb https://yourusername.github.io/pic/install.ps1 | iex</code>
+                        <button class="copy-btn" data-target="windows-command" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #667eea; color: white; border: none; padding: 0.3rem 0.8rem; border-radius: 3px; cursor: pointer;">Copy</button>
+                    </div>
+                </div>
+                
+                <p style="text-align: center; color: #999; margin-top: 1rem; margin-bottom: 0;">Or download directly from the <a href="#download" style="color: #667eea;">downloads section</a></p>
+            </div>
+            
             <div class="steps-grid">
                 <div class="step-card">
                     <div class="step-number">1</div>
                     <h3>Install pic</h3>
-                    <p>Download the binary for your OS or install via Go:</p>
-                    <div class="code-example">go install github.com/yourusername/pic@latest</div>
+                    <p>Run the quick install command above or download the binary for your OS</p>
                 </div>
                 <div class="step-card">
                     <div class="step-number">2</div>
@@ -476,6 +510,62 @@ Options:
                 document.querySelector(this.getAttribute('href')).scrollIntoView({
                     behavior: 'smooth'
                 });
+            });
+        });
+
+        // Platform tab switching
+        document.querySelectorAll('.install-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.install-tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.style.background = '#444';
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                this.style.background = '#667eea';
+                
+                // Hide all install content
+                document.querySelectorAll('.install-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+                
+                // Show selected content
+                const platform = this.getAttribute('data-platform');
+                document.getElementById(platform + '-install').style.display = 'block';
+            });
+        });
+
+        // Copy to clipboard functionality
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const targetId = this.getAttribute('data-target');
+                const textToCopy = document.getElementById(targetId).textContent;
+                
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    
+                    // Show success feedback
+                    const originalText = this.textContent;
+                    this.textContent = 'Copied!';
+                    this.style.background = '#28a745';
+                    
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                        this.style.background = '#667eea';
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    this.textContent = 'Failed';
+                    this.style.background = '#dc3545';
+                    
+                    setTimeout(() => {
+                        this.textContent = 'Copy';
+                        this.style.background = '#667eea';
+                    }, 2000);
+                }
             });
         });
     </script>

@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-REPO_OWNER="yourusername"
+REPO_OWNER="kidandcat"
 REPO_NAME="pic"
 BINARY_NAME="pic"
 INSTALL_DIR="/usr/local/bin"

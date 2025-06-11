@@ -2,7 +2,7 @@
 # This script installs pic on Windows systems
 
 # Configuration
-$RepoOwner = "yourusername"
+$RepoOwner = "kidandcat"
 $RepoName = "pic"
 $BinaryName = "pic"
 $InstallDir = "$env:LOCALAPPDATA\Programs\pic"

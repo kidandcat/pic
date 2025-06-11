@@ -23,7 +23,7 @@ A powerful command-line tool to capture full-page screenshots and PDFs of websit
 ### Build from source
 
 ```bash
-git clone https://github.com/yourusername/pic.git
+git clone https://github.com/kidandcat/pic.git
 cd pic
 go build -o pic main.go
 ```
@@ -31,12 +31,12 @@ go build -o pic main.go
 ### Install with Go
 
 ```bash
-go install github.com/yourusername/pic@latest
+go install github.com/kidandcat/pic@latest
 ```
 
 ### Download Pre-built Binary
 
-Visit the [releases page](https://github.com/yourusername/pic/releases) to download pre-compiled binaries for your platform.
+Visit the [releases page](https://github.com/kidandcat/pic/releases) to download pre-compiled binaries for your platform.
 
 ## Usage
 

@@ -69,6 +69,16 @@ pic --fixed-top 100 --fixed-bottom 50 example.com
 pic --pdf --fixed-top 100 example.com
 ```
 
+## Example Captures
+
+<div align="center">
+  <a href="docs/screenshots/pic-example-com.png"><img src="docs/screenshots/pic-example-com.png" width="30%" alt="Example.com screenshot"></a>
+  <a href="docs/screenshots/pic-example-wikipedia.png"><img src="docs/screenshots/pic-example-wikipedia.png" width="30%" alt="Wikipedia.org screenshot"></a>
+  <a href="docs/screenshots/pic-example-github.png"><img src="docs/screenshots/pic-example-github.png" width="30%" alt="GitHub.com screenshot"></a>
+</div>
+
+*Click on any screenshot to view full size*
+
 ### Output
 
 Screenshots are saved in the current directory with filenames based on the URL:

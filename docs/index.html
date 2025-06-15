@@ -286,6 +286,10 @@
             font-family: 'Courier New', monospace;
         }
         
+        .screenshot-thumb:hover {
+            transform: translateY(-5px) scale(1.05);
+        }
+        
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2rem;
@@ -332,9 +336,17 @@
             <div style="margin-top: 3rem;">
                 <p style="opacity: 0.8; margin-bottom: 1rem;">Example captures:</p>
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <img src="repo.png" alt="Repository screenshot" style="height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    <img src="website.png" alt="Website screenshot" style="height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                    <a href="screenshots/pic-example-com.png" target="_blank">
+                        <img src="screenshots/pic-example-com.png" alt="Example.com screenshot" class="screenshot-thumb" style="height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.3s;">
+                    </a>
+                    <a href="screenshots/pic-example-wikipedia.png" target="_blank">
+                        <img src="screenshots/pic-example-wikipedia.png" alt="Wikipedia.org screenshot" class="screenshot-thumb" style="height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.3s;">
+                    </a>
+                    <a href="screenshots/pic-example-github.png" target="_blank">
+                        <img src="screenshots/pic-example-github.png" alt="GitHub.com screenshot" class="screenshot-thumb" style="height: 150px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.3s;">
+                    </a>
                 </div>
+                <p style="opacity: 0.6; font-size: 0.9rem; margin-top: 0.5rem;">Click to view full size</p>
             </div>
         </div>
     </section>

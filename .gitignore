@@ -33,10 +33,6 @@ pic
 .DS_Store
 Thumbs.db
 
-# Screenshot outputs (for development)
-*.png
-*.pdf
-
 # Temporary files
 *.tmp
 *.temp

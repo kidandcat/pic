@@ -19,22 +19,22 @@ func main() {
 	fixedTop := flag.Float64("fixed-top", 0, "Fixed top margin in pixels")
 	fixedBottom := flag.Float64("fixed-bottom", 0, "Fixed bottom margin in pixels")
 	outputPDF := flag.Bool("pdf", false, "Output as PDF instead of PNG")
-	
+
 	// Custom usage function
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <URL>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
 		flag.PrintDefaults()
 	}
-	
+
 	flag.Parse()
-	
+
 	// Check for URL argument
 	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
-	
+
 	url := flag.Arg(0)
 
 	// Add protocol if missing
@@ -44,13 +44,13 @@ func main() {
 
 	// Generate filename from URL
 	baseFilename := generateFilename(url)
-	
+
 	// Create browser and page
 	page := rod.New().MustConnect().MustPage(url)
 	page.MustWaitStable()
-	
+
 	var outputFile string
-	
+
 	if *outputPDF {
 		// Generate PDF
 		outputFile = baseFilename + ".pdf"
@@ -58,12 +58,12 @@ func main() {
 	} else {
 		// Take screenshot
 		outputFile = baseFilename + ".png"
-		
+
 		if *fixedTop > 0 || *fixedBottom > 0 {
 			// Use ScrollScreenshot with fixed margins for handling fixed headers/footers
 			imgData, err := page.ScrollScreenshot(&rod.ScrollScreenshotOptions{
 				Format:        proto.PageCaptureScreenshotFormatPng,
-				Quality:       gson.Int(90),
+				Quality:       gson.Int(100),
 				FixedTop:      *fixedTop,
 				FixedBottom:   *fixedBottom,
 				WaitPerScroll: 300 * time.Millisecond,
@@ -72,7 +72,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Failed to take screenshot: %v\n", err)
 				os.Exit(1)
 			}
-			
+
 			// Write image data to file
 			if err := os.WriteFile(outputFile, imgData, 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to save screenshot: %v\n", err)

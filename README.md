@@ -72,9 +72,9 @@ pic --pdf --fixed-top 100 example.com
 ## Example Captures
 
 <div align="center">
-  <a href="docs/screenshots/pic-example-com.png"><img src="docs/screenshots/pic-example-com.png" width="30%" alt="Example.com screenshot"></a>
-  <a href="docs/screenshots/pic-example-wikipedia.png"><img src="docs/screenshots/pic-example-wikipedia.png" width="30%" alt="Wikipedia.org screenshot"></a>
-  <a href="docs/screenshots/pic-example-github.png"><img src="docs/screenshots/pic-example-github.png" width="30%" alt="GitHub.com screenshot"></a>
+  <a href="docs/screenshots/website.png"><img src="docs/screenshots/website.png" width="30%" alt="Example.com screenshot"></a>
+  <a href="docs/screenshots/en.wikipedia.org_wiki_Screenshot.png"><img src="docs/screenshots/en.wikipedia.org_wiki_Screenshot.png" width="30%" alt="Wikipedia.org screenshot"></a>
+  <a href="docs/screenshots/github.com_kidandcat_pic.png"><img src="docs/screenshots/github.com_kidandcat_pic.png" width="30%" alt="GitHub.com screenshot"></a>
 </div>
 
 *Click on any screenshot to view full size*

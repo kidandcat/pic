@@ -19,6 +19,9 @@ func main() {
 	fixedTop := flag.Float64("fixed-top", 0, "Fixed top margin in pixels")
 	fixedBottom := flag.Float64("fixed-bottom", 0, "Fixed bottom margin in pixels")
 	outputPDF := flag.Bool("pdf", false, "Output as PDF instead of PNG")
+	width := flag.Int("width", 0, "Viewport width in pixels (default: browser default)")
+	height := flag.Int("height", 0, "Viewport height in pixels (default: browser default)")
+	scroll := flag.Bool("scroll", false, "Use scroll fullscreen mode")
 
 	// Custom usage function
 	flag.Usage = func() {
@@ -47,6 +50,40 @@ func main() {
 
 	// Create browser and page
 	page := rod.New().MustConnect().MustPage(url)
+	
+	// Set viewport size if specified
+	if *width > 0 || *height > 0 {
+		// Get current viewport size as defaults
+		metrics, err := proto.PageGetLayoutMetrics{}.Call(page)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get layout metrics: %v\n", err)
+			os.Exit(1)
+		}
+		
+		viewportWidth := int(metrics.LayoutViewport.ClientWidth)
+		viewportHeight := int(metrics.LayoutViewport.ClientHeight)
+		
+		// Override with specified values
+		if *width > 0 {
+			viewportWidth = *width
+		}
+		if *height > 0 {
+			viewportHeight = *height
+		}
+		
+		// Set the viewport
+		err = page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{
+			Width:             viewportWidth,
+			Height:            viewportHeight,
+			DeviceScaleFactor: 1,
+			Mobile:            false,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to set viewport: %v\n", err)
+			os.Exit(1)
+		}
+	}
+	
 	page.MustWaitStable()
 
 	var outputFile string
@@ -59,8 +96,8 @@ func main() {
 		// Take screenshot
 		outputFile = baseFilename + ".png"
 
-		if *fixedTop > 0 || *fixedBottom > 0 {
-			// Use ScrollScreenshot with fixed margins for handling fixed headers/footers
+		if *scroll || *fixedTop > 0 || *fixedBottom > 0 {
+			// Use ScrollScreenshot for scroll mode or when fixed margins are specified
 			imgData, err := page.ScrollScreenshot(&rod.ScrollScreenshotOptions{
 				Format:        proto.PageCaptureScreenshotFormatPng,
 				Quality:       gson.Int(100),

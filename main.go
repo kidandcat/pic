@@ -1,18 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"image"
+	"image/draw"
+	"image/png"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
-	"github.com/ysmood/gson"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 )
 
 func main() {
@@ -20,102 +26,154 @@ func main() {
 	fixedTop := flag.Float64("fixed-top", 0, "Fixed top margin in pixels")
 	fixedBottom := flag.Float64("fixed-bottom", 0, "Fixed bottom margin in pixels")
 	outputPDF := flag.Bool("pdf", false, "Output as PDF instead of PNG")
-	width := flag.Int("width", 0, "Viewport width in pixels (default: browser default)")
-	height := flag.Int("height", 0, "Viewport height in pixels (default: browser default)")
+	width := flag.Int("width", 1280, "Viewport width in pixels (default: 1280)")
+	height := flag.Int("height", 800, "Viewport height in pixels (default: 800)")
 	scroll := flag.Bool("scroll", false, "Use scroll fullscreen mode")
 
 	// Custom usage function
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <URL>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <URL or HTML file>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
 		flag.PrintDefaults()
 	}
 
 	flag.Parse()
 
-	// Check for URL argument
+	// Check for URL/file argument
 	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	url := flag.Arg(0)
-
-	// Add protocol if missing
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = "https://" + url
+	input := flag.Arg(0)
+	var url string
+	var baseFilename string
+	var server *http.Server
+	
+	// Check if input is an HTML file
+	if strings.HasSuffix(strings.ToLower(input), ".html") || strings.HasSuffix(strings.ToLower(input), ".htm") {
+		// Check if file exists
+		if _, err := os.Stat(input); err != nil {
+			fmt.Fprintf(os.Stderr, "HTML file not found: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Start local server for HTML file
+		port, serverInstance, err := serveHTMLFile(input)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to serve HTML file: %v\n", err)
+			os.Exit(1)
+		}
+		server = serverInstance
+		defer server.Close()
+		
+		url = fmt.Sprintf("http://localhost:%d/%s", port, filepath.Base(input))
+		// Generate filename from HTML file name
+		baseFilename = strings.TrimSuffix(filepath.Base(input), filepath.Ext(input))
+	} else {
+		// Treat as URL
+		url = input
+		
+		// Add protocol if missing
+		if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+			url = "https://" + url
+		}
+		
+		// Generate filename from URL
+		baseFilename = generateFilename(url)
 	}
-
-	// Generate filename from URL
-	baseFilename := generateFilename(url)
 
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	// Create browser and page with timeout
-	browser := rod.New().Context(ctx).MustConnect()
-	defer browser.MustClose()
-	
-	page := browser.MustPage(url)
-	defer page.MustClose()
-	
+	// Create chrome instance
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+	)
+
+	allocCtx, allocCancel := chromedp.NewExecAllocator(ctx, opts...)
+	defer allocCancel()
+
+	chromeCtx, chromeCancel := chromedp.NewContext(allocCtx)
+	defer chromeCancel()
+
+	// Navigate to the URL
+	var initialViewportWidth, initialViewportHeight int64
+	if err := chromedp.Run(chromeCtx,
+		chromedp.Navigate(url),
+		chromedp.Evaluate(`window.innerWidth`, &initialViewportWidth),
+		chromedp.Evaluate(`window.innerHeight`, &initialViewportHeight),
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to navigate to URL: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Set viewport size if specified
 	if *width > 0 || *height > 0 {
-		// Get current viewport size as defaults
-		metrics, err := proto.PageGetLayoutMetrics{}.Call(page)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to get layout metrics: %v\n", err)
-			os.Exit(1)
+		viewportWidth := *width
+		viewportHeight := *height
+
+		// Use default values if not specified
+		if viewportWidth <= 0 {
+			viewportWidth = int(initialViewportWidth)
 		}
-		
-		viewportWidth := int(metrics.LayoutViewport.ClientWidth)
-		viewportHeight := int(metrics.LayoutViewport.ClientHeight)
-		
-		// Override with specified values
-		if *width > 0 {
-			viewportWidth = *width
+		if viewportHeight <= 0 {
+			viewportHeight = int(initialViewportHeight)
 		}
-		if *height > 0 {
-			viewportHeight = *height
-		}
-		
+
 		// Set the viewport
-		err = page.SetViewport(&proto.EmulationSetDeviceMetricsOverride{
-			Width:             viewportWidth,
-			Height:            viewportHeight,
-			DeviceScaleFactor: 1,
-			Mobile:            false,
-		})
-		if err != nil {
+		if err := chromedp.Run(chromeCtx,
+			chromedp.EmulateViewport(int64(viewportWidth), int64(viewportHeight)),
+		); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to set viewport: %v\n", err)
 			os.Exit(1)
 		}
 	}
-	
-	page.MustWaitStable()
+
+	// Wait for page to stabilize
+	if err := chromedp.Run(chromeCtx,
+		chromedp.Sleep(1*time.Second),
+	); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to wait for page: %v\n", err)
+		os.Exit(1)
+	}
 
 	var outputFile string
 
 	if *outputPDF {
 		// Generate PDF
 		outputFile = baseFilename + ".pdf"
-		page.MustPDF(outputFile)
+		var pdfData []byte
+		if err := chromedp.Run(chromeCtx,
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				var err error
+				pdfData, _, err = page.PrintToPDF().
+					WithPrintBackground(true).
+					WithPreferCSSPageSize(true).
+					Do(ctx)
+				return err
+			}),
+		); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to generate PDF: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := os.WriteFile(outputFile, pdfData, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to save PDF: %v\n", err)
+			os.Exit(1)
+		}
 	} else {
 		// Take screenshot
 		outputFile = baseFilename + ".png"
 
 		if *scroll || *fixedTop > 0 || *fixedBottom > 0 {
-			// Use ScrollScreenshot for scroll mode or when fixed margins are specified
-			imgData, err := page.ScrollScreenshot(&rod.ScrollScreenshotOptions{
-				Format:        proto.PageCaptureScreenshotFormatPng,
-				Quality:       gson.Int(100),
-				FixedTop:      *fixedTop,
-				FixedBottom:   *fixedBottom,
-				WaitPerScroll: 300 * time.Millisecond,
-			})
+			// Use custom scroll screenshot implementation
+			imgData, err := scrollScreenshot(chromeCtx, *fixedTop, *fixedBottom)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to take screenshot: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Failed to take scroll screenshot: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -126,7 +184,18 @@ func main() {
 			}
 		} else {
 			// Use regular full page screenshot
-			page.MustScreenshotFullPage(outputFile)
+			var buf []byte
+			if err := chromedp.Run(chromeCtx,
+				chromedp.FullScreenshot(&buf, 100),
+			); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to take screenshot: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := os.WriteFile(outputFile, buf, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to save screenshot: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -144,6 +213,125 @@ func main() {
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open viewer: %v\n", err)
 	}
+}
+
+func scrollScreenshot(ctx context.Context, fixedTop, fixedBottom float64) ([]byte, error) {
+	var viewportWidth, viewportHeight int64
+	var scrollHeight, scrollY int64
+
+	// Get initial viewport and document dimensions
+	if err := chromedp.Run(ctx,
+		chromedp.Evaluate(`window.innerWidth`, &viewportWidth),
+		chromedp.Evaluate(`window.innerHeight`, &viewportHeight),
+		chromedp.Evaluate(`document.documentElement.scrollHeight`, &scrollHeight),
+		chromedp.Evaluate(`window.scrollY`, &scrollY),
+	); err != nil {
+		return nil, fmt.Errorf("failed to get dimensions: %v", err)
+	}
+
+	// Reset scroll to top
+	if err := chromedp.Run(ctx,
+		chromedp.Evaluate(`window.scrollTo(0, 0)`, nil),
+		chromedp.Sleep(300*time.Millisecond),
+	); err != nil {
+		return nil, fmt.Errorf("failed to reset scroll: %v", err)
+	}
+
+	// Calculate effective viewport height (excluding fixed areas)
+	effectiveHeight := float64(viewportHeight) - fixedTop - fixedBottom
+	if effectiveHeight <= 0 {
+		return nil, fmt.Errorf("effective height is too small after applying fixed margins")
+	}
+
+	// Collect screenshots while scrolling
+	var screenshots []image.Image
+	var yPositions []int
+	currentY := 0.0
+
+	for currentY < float64(scrollHeight) {
+		// Scroll to current position
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(fmt.Sprintf(`window.scrollTo(0, %f)`, currentY), nil),
+			chromedp.Sleep(300*time.Millisecond),
+		); err != nil {
+			return nil, fmt.Errorf("failed to scroll: %v", err)
+		}
+
+		// Take screenshot
+		var buf []byte
+		if err := chromedp.Run(ctx,
+			chromedp.CaptureScreenshot(&buf),
+		); err != nil {
+			return nil, fmt.Errorf("failed to capture screenshot: %v", err)
+		}
+
+		// Decode image
+		img, err := png.Decode(bytes.NewReader(buf))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode screenshot: %v", err)
+		}
+
+		screenshots = append(screenshots, img)
+		yPositions = append(yPositions, int(currentY))
+
+		// Move to next position
+		currentY += effectiveHeight
+
+		// For the last screenshot, ensure we capture the bottom
+		if currentY >= float64(scrollHeight) && currentY-effectiveHeight < float64(scrollHeight)-effectiveHeight {
+			currentY = float64(scrollHeight) - effectiveHeight
+			if currentY < 0 {
+				currentY = 0
+			}
+		}
+	}
+
+	// Stitch screenshots together
+	return stitchScreenshots(screenshots, yPositions, int(viewportWidth), int(scrollHeight), int(fixedTop), int(fixedBottom), int(viewportHeight))
+}
+
+func stitchScreenshots(screenshots []image.Image, yPositions []int, width, totalHeight, fixedTop, fixedBottom, viewportHeight int) ([]byte, error) {
+	// Create final image
+	finalImg := image.NewRGBA(image.Rect(0, 0, width, totalHeight))
+
+	for i, screenshot := range screenshots {
+		bounds := screenshot.Bounds()
+		scrollY := yPositions[i]
+
+		// Calculate source rectangle (what part of the screenshot to use)
+		srcTop := fixedTop
+		srcBottom := bounds.Dy() - fixedBottom
+
+		// For the first screenshot, include everything from top
+		if i == 0 {
+			srcTop = 0
+		}
+
+		// For the last screenshot, include everything to bottom
+		if i == len(screenshots)-1 {
+			srcBottom = bounds.Dy()
+		}
+
+		// Calculate destination Y position
+		destY := scrollY
+		if i > 0 {
+			destY += fixedTop
+		}
+
+		// Draw the screenshot portion to the final image
+		srcRect := image.Rect(0, int(srcTop), bounds.Dx(), int(srcBottom))
+		destPoint := image.Point{0, destY}
+		draw.Draw(finalImg, image.Rectangle{destPoint, destPoint.Add(srcRect.Size())}, screenshot, srcRect.Min, draw.Src)
+	}
+
+	// Encode final image with best compression
+	var buf bytes.Buffer
+	encoder := png.Encoder{CompressionLevel: png.BestCompression}
+	if err := encoder.Encode(&buf, finalImg); err != nil {
+		return nil, fmt.Errorf("failed to encode final image: %v", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
 func createModalViewer(htmlFile, contentFile string, isPDF bool) error {
@@ -295,4 +483,48 @@ func generateFilename(url string) string {
 
 	// Return without extension (will be added based on output type)
 	return cleanURL
+}
+
+func serveHTMLFile(htmlFile string) (int, *http.Server, error) {
+	// Get absolute path
+	absPath, err := filepath.Abs(htmlFile)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to get absolute path: %v", err)
+	}
+	
+	// Get the directory containing the HTML file
+	dir := filepath.Dir(absPath)
+	
+	// Find an available port
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to find available port: %v", err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+	
+	// Create file server
+	mux := http.NewServeMux()
+	
+	// Serve the directory containing the HTML file
+	fileServer := http.FileServer(http.Dir(dir))
+	mux.Handle("/", fileServer)
+	
+	// Create server
+	server := &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", port),
+		Handler: mux,
+	}
+	
+	// Start server in background
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		}
+	}()
+	
+	// Wait a bit for server to start
+	time.Sleep(100 * time.Millisecond)
+	
+	return port, server, nil
 }

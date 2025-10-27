@@ -82,7 +82,7 @@ jobs:
           fi
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pic-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
